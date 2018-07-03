@@ -32,6 +32,8 @@ void perrorf(char *);
 // master pointer to (dev, ino) structure
 struct di_node *di;
 
+int status;
+
 int main(int argc, char **argv)
 {
 	if (argc > 2) {
@@ -49,6 +51,8 @@ int main(int argc, char **argv)
 	du(path);
 
 	free_di_nodes(di);
+
+	return status;
 }
 
 /**
@@ -72,10 +76,11 @@ uintmax_t du(char *dirname)
 			sz += BLOCKS(info.st_blocks);
 		}
 		printf("%lu\t%s\n", sz, dirname);
+		status = 1;
 		return sz;
 	}
 
-	while ((ep = readdir(dp))) {
+	for (; (ep = readdir(dp)); *end = '\0') {
 		// create the full path for lstat
 		if (*(end-1) != '/')
 			strcat(dirname, "/");
@@ -83,8 +88,9 @@ uintmax_t du(char *dirname)
 
 		if (lstat(dirname, &info)) {
 			// report the error, and continue
-			fprintf(stderr, "du: %s: %s\n", dirname, strerror(errno));
-			goto next;
+			perrorf(dirname);
+			status = 1;
+			continue;
 		}
 
 		/**
@@ -109,8 +115,6 @@ uintmax_t du(char *dirname)
 			 */
 			sz += BLOCKS(info.st_blocks);
 		}
-	next:
-		*end = '\0';
 	}
 
 	closedir(dp);
