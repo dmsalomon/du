@@ -18,7 +18,8 @@ static struct {
 	.size = 0,
 };
 
-static unsigned int hashf(dev_t dev, ino_t ino)
+/* TODO: make this better */
+static unsigned int genhash(dev_t dev, ino_t ino)
 {
 	register unsigned int h = 0;
 	int i;
@@ -62,7 +63,10 @@ static void *xmalloc(size_t size)
 
 static struct hentry *alloc_dev_ino(dev_t dev, ino_t ino)
 {
-	struct hentry *mem = xmalloc(sizeof(struct hentry));
+	struct hentry *mem;
+
+	mem = xmalloc(sizeof(*mem));
+
 	mem->dev = dev;
 	mem->ino = ino;
 	mem->next = NULL;
@@ -71,28 +75,23 @@ static struct hentry *alloc_dev_ino(dev_t dev, ino_t ino)
 
 static void resize(unsigned int buckets)
 {
-	struct hentry **table = xcalloc(buckets, sizeof(struct hentry*));
-	struct hentry *cur;
 	int i;
 	unsigned int hash;
+	struct hentry **table, **p, **q;
+
+	table = xcalloc(buckets, sizeof(*table));
 
 	for (i = 0; i < ht.buckets; i++) {
-		for (cur = ht.table[i]; cur; ) {
-			hash = hashf(cur->dev, cur->ino) % buckets;
-			struct hentry *p = table[hash];
+		for (p = &ht.table[i]; *p; ) {
+			hash = genhash((*p)->dev, (*p)->ino) % buckets;
+			q = &table[hash];
 
-			if (!p) {
-				table[hash] = cur;
-			}
-			else {
-				for (; p->next; p = p->next)
-					;
-				p->next = cur;
-			}
+			for (q = &table[hash]; *q; q = &(*q)->next)
+				;
 
-			p = cur->next;
-			cur->next = NULL;
-			cur = p;
+			*q = *p;
+			*p = (*p)->next;
+			(*q)->next = NULL;
 		}
 	}
 
@@ -105,29 +104,22 @@ static void resize(unsigned int buckets)
 
 int insert_dev_ino(dev_t dev, ino_t ino)
 {
+	unsigned int hash;
+	struct hentry **pp;
+
 	if (!ht.table) {
 		resize(4096);
 	}
 
-	unsigned int hash = hashf(dev, ino) % ht.buckets;
-	struct hentry *q, *p = ht.table[hash];
+	hash = genhash(dev, ino) % ht.buckets;
 
-	if (!p) {
-		ht.table[hash] = alloc_dev_ino(dev, ino);
-		ht.size++;
-		return 0;
-	}
-
-	for (; p; p = p->next) {
-		if (p->ino == ino && p->dev == dev)
+	for (pp = &ht.table[hash]; *pp; pp = &(*pp)->next)
+		if ((*pp)->ino == ino && (*pp)->dev == dev)
 			return 1;
-		q = p;
-	}
 
-	q->next = alloc_dev_ino(dev, ino);
-	ht.size++;
+	*pp = alloc_dev_ino(dev, ino);
 
-	if (ht.size > 2 * ht.buckets) {
+	if (++ht.size > 2 * ht.buckets) {
 		resize(4 * ht.buckets);
 	}
 
@@ -139,32 +131,39 @@ void free_table() {
 	struct hentry *p, *q;
 
 	for (i = 0; i < ht.buckets; i++) {
-		for (p = ht.table[i]; p; ) {
+		for (p = ht.table[i]; p; p = q) {
 			q = p->next;
 			free(p);
-			p = q;
 		}
 	}
 
 	if (ht.table)
 		free(ht.table);
 
+	ht.table = NULL;
 	ht.buckets = 0;
 	ht.size = 0;
 }
 
-#ifdef TEST
-
+#ifdef TEST_HASH
 #include <assert.h>
 
 int main()
 {
+	assert(ht.size == 0);
 	assert(insert_dev_ino(5, 2) == 0);
 	assert(insert_dev_ino(2, 9) == 0);
 	assert(insert_dev_ino(5, 2) == 1);
 	assert(insert_dev_ino(2, 9) == 1);
+	assert(ht.size == 2);
+
+	assert(genhash(532, 432) == genhash(532, 432));
 
 	free_table();
+
+	assert(!ht.table);
+	assert(ht.buckets == 0);
+	assert(ht.size == 0);
 
 	return 0;
 }

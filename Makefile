@@ -6,6 +6,10 @@ OBJ=du.o\
 
 du: $(OBJ)
 
-.PHONY: clean
+test: hash.c
+	$(CC) -DTEST_HASH $< -o hash
+	./hash
+
+.PHONY: clean test
 clean:
-	$(RM) du *.o
+	$(RM) du hash *.o
