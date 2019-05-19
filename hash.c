@@ -106,7 +106,7 @@ static void resize(unsigned int buckets)
 int insert_dev_ino(dev_t dev, ino_t ino)
 {
 	if (!ht.table) {
-		resize(32);
+		resize(4096);
 	}
 
 	unsigned int hash = hashf(dev, ino) % ht.buckets;
@@ -127,8 +127,8 @@ int insert_dev_ino(dev_t dev, ino_t ino)
 	q->next = alloc_dev_ino(dev, ino);
 	ht.size++;
 
-	if (ht.size > 4 * ht.buckets) {
-		resize(2 * ht.buckets);
+	if (ht.size > 2 * ht.buckets) {
+		resize(4 * ht.buckets);
 	}
 
 	return 0;
