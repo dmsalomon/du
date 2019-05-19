@@ -1,7 +1,10 @@
 
-CFLAGS=-g -Wall -O1
+CFLAGS=-g -Wall -O3
 
-du: du.o set.o
+OBJ=du.o\
+    hash.o\
+
+du: $(OBJ)
 
 .PHONY: clean
 clean:

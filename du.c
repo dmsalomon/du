@@ -10,7 +10,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "set.h"
+#include "hash.h"
 
 // macros to check for "." and ".."
 #define ISDOT(p)	((p)[0] == '.' && !(p)[1])
@@ -28,9 +28,6 @@
 // function prototypes
 uintmax_t du(char *);
 void perrorf(char *);
-
-// master pointer to (dev, ino) structure
-struct di_node *di;
 
 int status;
 
@@ -50,8 +47,7 @@ int main(int argc, char **argv)
 
 	du(path);
 
-	free_di_nodes(di);
-
+	free_table();
 	return status;
 }
 
@@ -109,7 +105,7 @@ uintmax_t du(char *dirname)
 			}
 		}
 		else if (info.st_nlink == 1 ||
-			    !insert_dev_ino(&di, info.st_dev, info.st_ino)) {
+			    !insert_dev_ino(info.st_dev, info.st_ino)) {
 			/* if a file has more than one hardlink, check
 			 * and store the inode number
 			 */
