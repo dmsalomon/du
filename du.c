@@ -33,19 +33,22 @@ int status;
 
 int main(int argc, char **argv)
 {
-	if (argc > 2) {
-		fprintf(stderr, "usage: du [directory]\n");
-		return 1;
+	char path[PATH_MAX];
+	uintmax_t total = 0;
+
+	if (argc < 2) {
+		strcpy(path, ".");
+		total += du(path);
+	} else {
+		for (argv++; *argv; argv++) {
+			strcpy(path, *argv);
+			total += du(path);
+		}
 	}
 
-	char path[PATH_MAX];
-
-	if (argc == 2)
-		strcpy(path, argv[1]);
-	else
-		strcpy(path, ".");
-
-	du(path);
+	if (argc > 2) {
+		printf("%lu\t%s\n", total, "total");
+	}
 
 	free_table();
 	return status;
@@ -57,34 +60,39 @@ int main(int argc, char **argv)
  *
  * The function uses a recursive strategy.
  */
-uintmax_t du(char *dirname)
+uintmax_t du(char *path)
 {
 	uintmax_t sz = 0;
 
-	DIR *dp = opendir(dirname);
-	char *end = dirname + strlen(dirname);
+	DIR *dp = opendir(path);
+	char *end = path + strlen(path);
 	struct dirent *ep;
 	struct stat info;
 
-	if (!dp) {
-		perrorf(dirname);
-		if (!lstat(dirname, &info)) {
-			sz += BLOCKS(info.st_blocks);
-		}
-		printf("%lu\t%s\n", sz, dirname);
+	if (lstat(path, &info)) {
+		perrorf(path);
 		status = 1;
-		return sz;
+		return 0;
+	}
+
+	if (!dp) {
+		if (S_ISDIR(info.st_mode)) {
+			perrorf(path);
+			status = 1;
+		}
+		sz += BLOCKS(info.st_blocks);
+		goto out;
 	}
 
 	for (; (ep = readdir(dp)); *end = '\0') {
 		// create the full path for lstat
 		if (*(end-1) != '/')
-			strcat(dirname, "/");
-		strcat(dirname, ep->d_name);
+			strcat(path, "/");
+		strcat(path, ep->d_name);
 
-		if (lstat(dirname, &info)) {
+		if (lstat(path, &info)) {
 			// report the error, and continue
-			perrorf(dirname);
+			perrorf(path);
 			status = 1;
 			continue;
 		}
@@ -101,7 +109,7 @@ uintmax_t du(char *dirname)
 				sz += BLOCKS(info.st_blocks);
 			}
 			else if (!ISDOTDOT(ep->d_name)) {
-				sz += du(dirname);
+				sz += du(path);
 			}
 		}
 		else if (info.st_nlink == 1 ||
@@ -114,7 +122,8 @@ uintmax_t du(char *dirname)
 	}
 
 	closedir(dp);
-	printf("%lu\t%s\n", sz, dirname);
+out:
+	printf("%lu\t%s\n", sz, path);
 	return sz;
 }
 
