@@ -150,6 +150,8 @@ void free_table() {
 
 int main()
 {
+	unsigned int b1;
+
 	assert(ht.size == 0);
 	assert(insert_dev_ino(5, 2) == 0);
 	assert(insert_dev_ino(2, 9) == 0);
@@ -158,6 +160,15 @@ int main()
 	assert(ht.size == 2);
 
 	assert(genhash(532, 432) == genhash(532, 432));
+
+	b1 = ht.buckets;
+	resize(2 * ht.buckets);
+	assert(2 * b1 == ht.buckets);
+	assert(ht.size == 2);
+	assert(insert_dev_ino(5, 2) == 1);
+	assert(insert_dev_ino(2, 9) == 1);
+	assert(insert_dev_ino(342, 9824) == 0);
+	assert(ht.size == 3);
 
 	free_table();
 

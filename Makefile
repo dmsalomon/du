@@ -7,7 +7,7 @@ OBJ=du.o\
 du: $(OBJ)
 
 test: hash.c
-	$(CC) -DTEST_HASH $< -o hash
+	$(CC) $(CFLAGS) -DTEST_HASH $< -o hash
 	./hash
 
 .PHONY: clean test
