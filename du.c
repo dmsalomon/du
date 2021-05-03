@@ -12,18 +12,21 @@
 
 #include "hash.h"
 
-// macros to check for "." and ".."
-#define ISDOT(p)	((p)[0] == '.' && !(p)[1])
-#define ISDOTDOT(p)	((p)[0] == '.' && (p)[1] == '.' && !(p)[2])
-
 // macros to compute the blocksize on each platform
 // this is to be consistent with GNU which ignores
 // POSIX and uses 1Kb blocks instead of 512b
 #ifdef __linux__
-#define BLOCKS(nb)	((nb)/2)
+	#define BLOCKS(nb)	((nb)/2)
 #elif __MACH__
-#define BLOCKS(nb)	((nb))
+	#define BLOCKS(nb)	((nb))
+	#ifndef PATH_MAX
+		#include <sys/syslimits.h>
+	#endif
 #endif
+
+// macros to check for "." and ".."
+#define ISDOT(p)	((p)[0] == '.' && !(p)[1])
+#define ISDOTDOT(p)	((p)[0] == '.' && (p)[1] == '.' && !(p)[2])
 
 // function prototypes
 uintmax_t du(char *);

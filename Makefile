@@ -13,3 +13,4 @@ test: hash.c
 .PHONY: clean test
 clean:
 	$(RM) du hash *.o
+	$(RM) -rf du.dSYM/
